@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\buku;
 use Illuminate\Http\Request;
+use File;
 
 class bookController extends Controller
 {
@@ -12,9 +13,16 @@ class bookController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $buku = buku::latest()->paginate(5);
+        if ($request->has('cari')) {
+            $buku = buku::where('judul', 'LIKE', '%' . $request->cari . '%')
+            ->orWhere('penulis', 'LIKE', '%' . $request->cari . '%')->
+            orWhere('penerbit', 'LIKE', '%' . $request->cari . '%')->
+            orWhere('tahun_terbit', 'LIKE', '%' . $request->cari . '%')->paginate(2);
+        } else {
+            $buku = buku::latest()->paginate(2);
+        }
         return view('buku.index', compact('buku'))->with('i', (request()->input('page', 1) - 1) * 5);
     }
 
@@ -41,16 +49,16 @@ class bookController extends Controller
             'penulis' => 'required',
             'penerbit' => 'required',
             'tahun_terbit' => 'required',
-            'image' => 'required|image|mimes:jpeg,jpg,png|max:10000'
+            'cover' => 'required|image|mimes:jpeg,jpg,png|max:10000'
         ]);
 
         $input = $request->all();
 
-        if ($image = $request->file('image')) {
+        if ($image = $request->file('cover')) {
             $destination = 'image/';
-            $imagename = date('YmdHis') . "-" . $image->getClientOriginalName() . "." . $image->getClientOriginalExtention();
+            $imagename = date('YmdHis') . "-" . $image->getClientOriginalName();
             $image->move($destination, $imagename);
-            $input['image'] = "$imagename";
+            $input['cover'] = "$imagename";
         } 
 
         buku::create($input);
@@ -99,18 +107,21 @@ class bookController extends Controller
             'penulis' => 'required',
             'penerbit' => 'required',
             'tahun_terbit' => 'required',
-            'image' => 'required|image|mimes:jpeg,jpg,png|max:10000'
+            'cover' => 'image|mimes:jpeg,jpg,png|max:10000'
         ]);
 
         $input = $request->all();
 
-        if ($image = $request->file('image')) {
+        if ($image = $request->file('cover')) {
+            if ($request->oldCover) {
+                File::delete('image/'.$request->oldCover);
+            };
             $destination = 'image/';
-            $imagename = date('YmdHis') . "-" . $image->getClientOriginalName() . "." . $image->getClientOriginalExtention();
+            $imagename = date('YmdHis') . "-" . $image->getClientOriginalName();
             $image->move($destination, $imagename);
-            $input['image'] = "$imagename";
+            $input['cover'] = "$imagename";
         } else {
-            unset($input['image']);
+            unset($input['cover']);
         }
 
         $buku->update($input);
@@ -126,6 +137,19 @@ class bookController extends Controller
      */
     public function destroy(buku $buku)
     {
+        if(File::exists(public_path('image/' . $buku->cover))){
+            File::delete('image/'.$buku->cover);
+        };
+        $buku->delete();
+        return redirect()->route('buku.index')->with('success', 'buku berhasil di hapus');
+    }
+
+    public function delete($id)
+    {
+        $buku = buku::find($id);
+        if(File::exists(public_path('image/' . $buku->cover))){
+            File::delete('image/'.$buku->cover);
+        };
         $buku->delete();
         return redirect()->route('buku.index')->with('success', 'buku berhasil di hapus');
     }

@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\bookController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -13,8 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [bookController::class, 'index'])->name('index');
 
 Route::resource('buku', 'App\Http\Controllers\bookController');
+Route::get('/delete/{id}', [bookController::class, 'delete'])->name('delete');
